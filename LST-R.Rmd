@@ -1,0 +1,154 @@
+---
+
+title: "LST-R"
+author: "Aji John"
+date: "8/28/2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r}
+#link to the latest satellite imagery
+latest <-'http://thredds.ucar.edu/thredds/dodsC/satellite/SFC-T/SUPER-NATIONAL_1km/current/SUPER-NATIONAL_1km_SFC-T_20170825_1900.gini'
+
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r, echo=FALSE}
+#read the GINI as netCDF file
+# load the ncdf4 package
+library(ncdf4)
+# open a netCDF file
+ncin <- nc_open(latest)
+print(ncin)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+```{r, echo=FALSE}
+
+x <- ncvar_get(ncin,"x")
+nx <- dim(x)
+head(nx)
+```
+
+```{r, echo=FALSE}
+# get proj y
+y <- ncvar_get(ncin,"y")
+ny <- dim(y)
+head(ny)
+```
+
+```{r, echo=FALSE}
+print(c(nx,ny))
+# get time
+time <- ncvar_get(ncin,"time")
+time
+
+tunits <- ncatt_get(ncin,"time","units")
+nt <- dim(time)
+nt
+```
+
+```{r, echo=FALSE}
+dname <- "SFC_T"  # 
+# get surface temperature
+tmp_array <- ncvar_get(ncin,dname)
+dlname <- ncatt_get(ncin,dname,"long_name")
+dunits <- ncatt_get(ncin,dname,"units")
+fillvalue <- ncatt_get(ncin,dname,"_FillValue")
+dim(tmp_array)
+```
+
+```{r, echo=FALSE}
+library(rgdal)
+
+xy <- as.data.frame(expand.grid(x,y))
+coordinates(xy)= ~Var1 + Var2
+proj.pol <- CRS('+proj=stere +lat_0=90 +lon_0=-105.0 +x_0=0.0 +y_0=0.0')
+wgs <- CRS('+proj=longlat +datum=WGS84')
+proj4string(xy) <- proj.pol
+awgs <- spTransform(xy, wgs)
+head(awgs)
+```
+
+```{r, echo=FALSE}
+proj.pol <- CRS('+ellps=sphere +a=6371200.0 +b=6371200.0 +proj=stere +lat_0=90 +lon_0=-105.0 +x_0=0.0 +y_0=0.0 +no_defs')
+wgs <- CRS('+proj=longlat +datum=WGS84')
+proj4string(xy) <- proj.pol
+awgs <- spTransform(xy, wgs)
+head(awgs)
+summary(awgs)
+coordinates(awgs)
+bbox(awgs)
+```
+```{r, echo=FALSE}
+# get proj y
+temp_df <- data.frame(sfct = as.vector(tmp_array))
+awgs.spdf <- SpatialPointsDataFrame(awgs, temp_df)
+summary(awgs.spdf)
+```
+
+```{r, echo=FALSE}
+# get proj y
+# quick ma
+library(ggmap)    # loads ggplot2 as well
+map <- get_map(location=rowMeans(bbox(awgs)), zoom=13)   # get Google map
+
+```
+```{r, echo=FALSE}
+# get proj y
+library(leaflet)
+library(leaflet.extras)
+leaflet(awgs.spdf) %>% addProviderTiles(providers$CartoDB.Positron) %>%
+  addHeatmap(lng = coordinates(awgs.spdf)[,1], lat = coordinates(awgs.spdf)[,2], intensity = ~awgs.spdf@data$sfct,
+             blur = 20, max = 0.05, radius = 15)
+```
+```{r, echo=FALSE}
+# get proj y
+data(air, package = "spacetime")
+library(sp)
+nds = DE_NUTS1["Niedersachsen",]
+library(ggmap)
+bgMap = get_map(as.vector(bbox(nds)), source = "google", zoom = 7)
+par(mar = rep(0,4))
+merc = CRS("+init=epsg:3857")
+plot(spTransform(nds, merc), bgMap = bgMap, col = grey(.5, alpha = .5))
+```
+```{r, echo=FALSE}
+# get proj y
+
+
+# get proj y
+
+library(sp)
+
+library(ggmap)
+bgMap = get_map(as.vector(bbox(awgs)), source = "google", zoom = 7)
+merc = CRS("+init=epsg:4326")
+plot(spTransform(awgs, merc), bgMap = bgMap, col = hea
+
+```
+# get proj y
+
+```
+```{r, echo=FALSE}
+# get proj y
+
+```
+```{r, echo=FALSE}
+# get proj y
+
+```
