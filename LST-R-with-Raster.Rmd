@@ -19,11 +19,11 @@ library(dplyr)
 ```
 ## R Markdown
 
-Get the latest imagery
+Get the latest imagery, version with Lat/Long
 
 ```{r}
 #link to the latest satellite imagery
-latest <-'SUPER-NATIONAL_1km_SFC-T_20170828_2000.gini.nc'
+latest <-'SUPER-NATIONAL_1km_SFC-T_20170829_1600.gini.nc4'
 
 ```
 
@@ -83,15 +83,33 @@ Assuming that this timestamp is in milliseconds:
 GMT: Friday, August 25, 2017 7:00:00 PM
 
 
-Our goal is to create spatial points dataframe
+Get lat long
+```{r, echo=FALSE}
+
+lat <- ncvar_get(ncin,"lat")
+nlat <- dim(lat)
+lat_df <- data.frame(lat = as.vector(lat))
+lat_df
+```
 
 ```{r, echo=FALSE}
+# get long
+long <- ncvar_get(ncin,"lon")
+long_df <- data.frame(lon = as.vector(long))
+long_df
+```
+
+Our goal is to create spatial points dataframe
+
+latitude is represented by horizontal lines, which go up and down (North and South) the Y axis, and Longitude is X
+```{r, echo=FALSE}
 # get proj y
-xy <- as.data.frame(expand.grid(x,y))
-coordinates(xy)= ~Var1 + Var2
+xy_df <- data.frame(lon=long_df$lon,lat=lat_df$lat)
+
+coordinates(xy_df)= ~lon + lat
 sfct_df <- data.frame(sfct = as.vector(sfct))
-lst_sp_fw <- SpatialPointsDataFrame(coordinates(xy), data =sfct_df
-                                    , proj4string = CRS("+proj=stere +lat_0=90 +lon_0=-105 +ellps=WGS84 +datum=WGS84"))
+lst_sp_fw <- SpatialPointsDataFrame(coordinates(xy_df), data =sfct_df
+                                    , proj4string = CRS("+proj=longlat +ellps=WGS84"))
 ```
 
 Now, we created the spatial points dataframe and existing points are
@@ -100,33 +118,41 @@ Sterographic , and the units are in km
 next, we transform it to lat/long
 
 ```{r, echo=FALSE}
-lst_sp_fw_proj <- spTransform(lst_sp_fw, CRS("+proj=longlat +ellps=WGS84"))
+#lst_sp_fw_proj <- spTransform(lst_sp_fw, CRS("+proj=longlat +ellps=WGS84"))
 ```
 
 
 Verify the bounding box
 ```{r, echo=FALSE}
-summary(lst_sp_fw_proj)
-bbox(lst_sp_fw_proj)
+summary(lst_sp_fw)
+bbox(lst_sp_fw)
 ```
 
 Lets try to plot it
 
 ```{r, echo=FALSE}
 library(ggmap)
-bgMap = get_map(as.vector(bbox(lst_sp_fw_proj)), source = "google", zoom = 3)
+bgMap = get_map(as.vector(bbox(lst_sp_fw)), source = "google", zoom = 1)
 ```
 
 ```{r, echo=FALSE}
 plot(bgMap) 
+coordinates_df <- as.data.frame(lst_sp_fw@coords)
+points(coordinates_df$lon, coordinates_df$lat, col = "red", cex = .6)
 ```
 
 Map is focusing on South America, means, transform didn't work
 ```{r, echo=FALSE}
 # commemt
 
+us_map<-get_map(location='united states', zoom=3, maptype = "terrain",
+             source='google',color='color')
 ```
 ```{r, echo=FALSE}
 # commemt
-
+lst_df_final <- as.data.frame(lst_sp_fw)
+ggmap(us_map) + geom_point(
+        aes(x=lon, y=lat,  colour=sfct), 
+        data=lst_df_final, alpha=.5, na.rm = T)  + 
+        scale_color_gradient(low="beige", high="blue")
 ```
