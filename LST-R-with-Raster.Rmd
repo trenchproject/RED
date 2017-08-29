@@ -1,6 +1,6 @@
 ---
-title: "LST-R-Projection"
-author: "Aji John"
+title: "LST-R-Raster"
+author: "Aji John(ajijohn@uw.edu"
 date: "8/28/2017"
 output:
   pdf_document: default
@@ -20,10 +20,15 @@ library(dplyr)
 ## R Markdown
 
 Get the latest imagery, version with Lat/Long
+File downloaded - http://thredds.ucar.edu/thredds/ncss/satellite/SFC-T/SUPER-NATIONAL_1km/current/SUPER-NATIONAL_1km_SFC-T_20170829_1600.gini/dataset.html (by choosing Add 2D Lat/Lon to file (if needed for CF compliance)  - Add Lat/Lon variables  on the lower right)
 
 ```{r}
-#link to the latest satellite imagery
+#link to the latest satellite imagery(downloaded)
 latest <-'SUPER-NATIONAL_1km_SFC-T_20170829_1600.gini.nc4'
+
+#or
+#link to the latest satellite imagery
+#latest <-'http://thredds.ucar.edu/thredds/dodsC/satellite/SFC-T/SUPER-NATIONAL_1km/current/SUPER-NATIONAL_1km_SFC-T_20170828_1900.gini'
 
 ```
 
@@ -31,8 +36,8 @@ latest <-'SUPER-NATIONAL_1km_SFC-T_20170829_1600.gini.nc4'
 
 Open the gini as netCDF
 
-```{r, echo=FALSE}
-#read the GINI as netCDF file
+```{r}
+# read the GINI as netCDF file
 # load the ncdf4 package
 library(ncdf4)
 # open a netCDF file
@@ -42,7 +47,7 @@ print(ncin)
 
 get the surface temperature variable
 
-```{r, echo=FALSE}
+```{r}
 
 sfct <- ncvar_get(ncin, "SFC_T")
 dim(sfct)
@@ -51,15 +56,15 @@ dim(sfct)
 
 sfct is a two dimenional array
 
-```{r, echo=FALSE}
-
+```{r}
+# get proj x
 x <- ncvar_get(ncin,"x")
 nx <- dim(x)
 head(nx)
 summary(x)
 ```
 
-```{r, echo=FALSE}
+```{r}
 # get proj y
 y <- ncvar_get(ncin,"y")
 ny <- dim(y)
@@ -68,7 +73,7 @@ summary(y)
 ```
 
 Time is only for onetimestamp
-```{r, echo=FALSE}
+```{r}
 print(c(nx,ny))
 # get time
 time <- ncvar_get(ncin,"time")
@@ -84,25 +89,24 @@ GMT: Friday, August 25, 2017 7:00:00 PM
 
 
 Get lat long
-```{r, echo=FALSE}
-
+```{r}
+# get lat
 lat <- ncvar_get(ncin,"lat")
 nlat <- dim(lat)
 lat_df <- data.frame(lat = as.vector(lat))
-lat_df
+summary(lat_df)
 ```
 
-```{r, echo=FALSE}
+```{r}
 # get long
 long <- ncvar_get(ncin,"lon")
 long_df <- data.frame(lon = as.vector(long))
-long_df
+summary(long_df)
 ```
 
 Our goal is to create spatial points dataframe
-
-latitude is represented by horizontal lines, which go up and down (North and South) the Y axis, and Longitude is X
-```{r, echo=FALSE}
+Note:latitude is represented by horizontal lines, which go up and down (North and South) the Y axis, and Longitude is X
+```{r}
 # get proj y
 xy_df <- data.frame(lon=long_df$lon,lat=lat_df$lat)
 
@@ -115,44 +119,34 @@ lst_sp_fw <- SpatialPointsDataFrame(coordinates(xy_df), data =sfct_df
 Now, we created the spatial points dataframe and existing points are
 Sterographic , and the units are in km
 
-next, we transform it to lat/long
+next, we transform it to lat/long, not needed as we have the netCDF already with lat/long
 
-```{r, echo=FALSE}
+```{r}
 #lst_sp_fw_proj <- spTransform(lst_sp_fw, CRS("+proj=longlat +ellps=WGS84"))
 ```
 
 
 Verify the bounding box
-```{r, echo=FALSE}
+```{r}
 summary(lst_sp_fw)
 bbox(lst_sp_fw)
 ```
 
-Lets try to plot it
-
-```{r, echo=FALSE}
-library(ggmap)
-bgMap = get_map(as.vector(bbox(lst_sp_fw)), source = "google", zoom = 1)
-```
-
-```{r, echo=FALSE}
-plot(bgMap) 
-coordinates_df <- as.data.frame(lst_sp_fw@coords)
-points(coordinates_df$lon, coordinates_df$lat, col = "red", cex = .6)
-```
-
-Map is focusing on South America, means, transform didn't work
-```{r, echo=FALSE}
+Lets try to plot it, to see if the coordinates are correct.
+```{r}
 # commemt
-
+library(ggmap)
 us_map<-get_map(location='united states', zoom=3, maptype = "terrain",
              source='google',color='color')
 ```
-```{r, echo=FALSE}
+```{r}
 # commemt
 lst_df_final <- as.data.frame(lst_sp_fw)
+# Remove zero surface skin temperature
+lst_df_final_trimmed =  lst_df_final %>% filter(sfct > 0) %>% as.data.frame()
+
 ggmap(us_map) + geom_point(
         aes(x=lon, y=lat,  colour=sfct), 
-        data=lst_df_final, alpha=.5, na.rm = T)  + 
-        scale_color_gradient(low="beige", high="blue")
+        data=lst_df_final_trimmed, alpha=.5, na.rm = T)  + 
+        scale_color_gradient(low="green", high="red")
 ```
